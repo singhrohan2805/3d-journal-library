@@ -2,15 +2,15 @@
   "shelves": [
     {
       "id": "shelf_1786818563203",
-      "name": "New Shelf",
+      "name": "New Shel",
       "position": [
-        0,
+        -8.699999999999985,
         0,
         0
       ],
       "rotation": [
         0,
-        0,
+        1.6000000000000003,
         0
       ],
       "entrySlugs": []
