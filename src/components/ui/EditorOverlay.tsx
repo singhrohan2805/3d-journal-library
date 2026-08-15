@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import { saveLayout, saveEntry, deleteEntryAction } from '../../app/actions';
 import dynamic from 'next/dynamic';
@@ -21,11 +21,16 @@ export default function EditorOverlay() {
   const selectBook = useStore((s) => s.selectBook);
 
   const [saving, setSaving] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   if (phase !== 'editing' || !layout) return null;
 
   const selectedShelf = layout.shelves.find((s) => s.id === selectedShelfId);
   const selectedEntry = entries.find((e) => e.slug === selectedBookId);
+  
+  if (selectedBookId && !selectedEntry) {
+    console.error("EditorOverlay: selectedBookId is set but selectedEntry not found!", { selectedBookId, entriesCount: entries.length, entriesSlugs: entries.map(e => e.slug) });
+  }
 
   const handleAddShelf = async () => {
     const newShelf = {
@@ -39,6 +44,10 @@ export default function EditorOverlay() {
     
     setLibraryData(newLayout, entries);
     selectShelf(newShelf.id);
+    
+    saveLayout(newLayout).then(result => {
+      if (!result.success) console.error("Failed to save new shelf.");
+    });
   };
 
   const handleDeleteShelf = async () => {
@@ -68,6 +77,11 @@ export default function EditorOverlay() {
       shelves: layout.shelves.map((s) => (s.id === selectedShelf.id ? { ...s, name } : s)),
     };
     setLibraryData(newLayout, entries);
+    
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      saveLayout(newLayout);
+    }, 1500);
   };
 
   const handleAddEntry = async () => {
@@ -91,6 +105,11 @@ export default function EditorOverlay() {
     
     setLibraryData(newLayout, [...entries, newEntry]);
     selectBook(newEntry.slug);
+
+    // Save to disk in background
+    saveEntry(slug, newEntry.title, newEntry.date, newEntry.content, selectedShelf.id, newLayout).then(result => {
+      if (!result.success) console.error("Failed to save new entry.");
+    });
   };
 
   const handleUpdateEntry = async (updates: Partial<typeof selectedEntry>) => {
@@ -99,7 +118,14 @@ export default function EditorOverlay() {
     const updatedEntry = { ...currentEntry, ...updates };
     setLibraryData(layout, entries.map(e => e.slug === currentEntry.slug ? updatedEntry : e));
     
-    // We don't save to disk immediately on every keystroke to avoid spamming the server action
+    // Auto-save debounced
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const parentShelf = layout.shelves.find(s => s.entrySlugs.includes(currentEntry.slug));
+      if (parentShelf) {
+        saveEntry(updatedEntry.slug, updatedEntry.title, updatedEntry.date, updatedEntry.content, parentShelf.id, layout);
+      }
+    }, 1500);
   };
 
   const handleSaveEntryToDisk = async () => {
