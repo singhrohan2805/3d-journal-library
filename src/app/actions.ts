@@ -111,11 +111,16 @@ export async function getLibraryData() {
     layout = { shelves };
     
     // Ensure directory exists
-    if (!fs.existsSync(CONTENT_DIR)) {
-      fs.mkdirSync(CONTENT_DIR, { recursive: true });
+    try {
+      if (!fs.existsSync(CONTENT_DIR)) {
+        fs.mkdirSync(CONTENT_DIR, { recursive: true });
+      }
+      const layoutContent = JSON.stringify(layout, null, 2);
+      fs.writeFileSync(LAYOUT_FILE, layoutContent);
+    } catch (e) {
+      console.warn('Local FS write failed (expected on Vercel)', e);
     }
     const layoutContent = JSON.stringify(layout, null, 2);
-    fs.writeFileSync(LAYOUT_FILE, layoutContent);
 
     // If migrating dynamically, might want to commit it as well
     if (octokit) {
@@ -128,7 +133,11 @@ export async function getLibraryData() {
 
 export async function saveLayout(layout: LibraryLayout) {
   const content = JSON.stringify(layout, null, 2);
-  fs.writeFileSync(LAYOUT_FILE, content);
+  try {
+    fs.writeFileSync(LAYOUT_FILE, content);
+  } catch (e) {
+    console.warn('Local FS write failed (expected on Vercel)', e);
+  }
 
   if (octokit) {
     await commitToGithub('Update library layout', [
@@ -140,13 +149,17 @@ export async function saveLayout(layout: LibraryLayout) {
 }
 
 export async function saveEntry(slug: string, title: string, date: string, content: string, shelfId: string, layout: LibraryLayout) {
-  if (!fs.existsSync(JOURNAL_DIR)) {
-    fs.mkdirSync(JOURNAL_DIR, { recursive: true });
-  }
-
-  const filePath = path.join(JOURNAL_DIR, `${slug}.md`);
   const fileContent = matter.stringify(content, { title, date });
-  fs.writeFileSync(filePath, fileContent);
+  try {
+    if (!fs.existsSync(JOURNAL_DIR)) {
+      fs.mkdirSync(JOURNAL_DIR, { recursive: true });
+    }
+
+    const filePath = path.join(JOURNAL_DIR, `${slug}.md`);
+    fs.writeFileSync(filePath, fileContent);
+  } catch (e) {
+    console.warn('Local FS write failed (expected on Vercel)', e);
+  }
 
   // Update layout.json if the slug is not in the shelf
   let updatedLayout = { ...layout };
@@ -177,7 +190,11 @@ export async function saveEntry(slug: string, title: string, date: string, conte
 
   if (found) {
     const layoutContent = JSON.stringify(updatedLayout, null, 2);
-    fs.writeFileSync(LAYOUT_FILE, layoutContent);
+    try {
+      fs.writeFileSync(LAYOUT_FILE, layoutContent);
+    } catch (e) {
+      console.warn('Local FS write failed (expected on Vercel)', e);
+    }
     filesToCommit.push({ path: 'content/layout.json', content: layoutContent });
   }
 
@@ -189,9 +206,13 @@ export async function saveEntry(slug: string, title: string, date: string, conte
 }
 
 export async function deleteEntryAction(slug: string, layout: LibraryLayout) {
-  const filePath = path.join(JOURNAL_DIR, `${slug}.md`);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
+  try {
+    const filePath = path.join(JOURNAL_DIR, `${slug}.md`);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (e) {
+    console.warn('Local FS delete failed (expected on Vercel)', e);
   }
 
   // Remove from layout
@@ -202,7 +223,11 @@ export async function deleteEntryAction(slug: string, layout: LibraryLayout) {
   }));
 
   const layoutContent = JSON.stringify(updatedLayout, null, 2);
-  fs.writeFileSync(LAYOUT_FILE, layoutContent);
+  try {
+    fs.writeFileSync(LAYOUT_FILE, layoutContent);
+  } catch (e) {
+    console.warn('Local FS write failed (expected on Vercel)', e);
+  }
 
   if (octokit) {
     await commitToGithub(`Delete journal entry: ${slug}`, [
