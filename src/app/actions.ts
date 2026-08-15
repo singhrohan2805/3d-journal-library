@@ -5,6 +5,7 @@ import path from 'path';
 import matter from 'gray-matter';
 import { Octokit } from '@octokit/rest';
 import { JournalEntry, LibraryLayout, ShelfLayout, getAllEntries } from '../lib/journal';
+import { revalidatePath } from 'next/cache';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content');
 const JOURNAL_DIR = path.join(CONTENT_DIR, 'journal');
@@ -154,6 +155,7 @@ export async function saveLayout(layout: LibraryLayout) {
     if (!success) return { success: false, error: 'Failed to save to GitHub' };
   }
 
+  revalidatePath('/');
   return { success: true };
 }
 
@@ -212,6 +214,7 @@ export async function saveEntry(slug: string, title: string, date: string, conte
     if (!success) return { success: false, error: 'Failed to save to GitHub' };
   }
 
+  revalidatePath('/');
   return { success: true, newLayout: updatedLayout };
 }
 
@@ -247,5 +250,6 @@ export async function deleteEntryAction(slug: string, layout: LibraryLayout) {
     if (!success) return { success: false, error: 'Failed to save to GitHub' };
   }
 
+  revalidatePath('/');
   return { success: true, newLayout: updatedLayout };
 }
