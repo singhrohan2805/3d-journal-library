@@ -10,6 +10,7 @@ interface BookshelfProps {
   width?: number;
   height?: number;
   depth?: number;
+  onClick?: (e: any) => void;
 }
 
 export default function Bookshelf({
@@ -19,6 +20,7 @@ export default function Bookshelf({
   width = 2.4,
   height = 4.5,
   depth = 0.45,
+  onClick,
 }: BookshelfProps) {
   const frameMat = useMemo(
     () =>
@@ -45,7 +47,7 @@ export default function Bookshelf({
   const shelfSpacing = (height - shelfThickness) / shelves;
 
   return (
-    <group position={position} rotation={rotation}>
+    <group position={position} rotation={rotation} onClick={onClick}>
       {/* Back panel */}
       <mesh position={[0, height / 2, -depth / 2 + 0.01]} material={backMat}>
         <boxGeometry args={[width, height, 0.02]} />

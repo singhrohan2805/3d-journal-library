@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
-import { useFrame } from '@react-three/fiber';
+import React, { useRef, useState, useCallback, forwardRef } from 'react';
+import { useFrame, ThreeEvent } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { useStore } from '../../store/useStore';
@@ -34,7 +34,7 @@ interface BookProps {
   index: number;
 }
 
-export default function Book({ entry, position, rotation = [0, 0, 0], index }: BookProps) {
+export const Book = forwardRef<THREE.Group, BookProps>(({ entry, position, rotation = [0, 0, 0], index }, ref) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const phase = useStore((s) => s.phase);
@@ -62,15 +62,16 @@ export default function Book({ entry, position, rotation = [0, 0, 0], index }: B
   const selectBook = useStore((s) => s.selectBook);
 
   const handleClick = useCallback(
-    (e: THREE.Event) => {
+    (e: ThreeEvent<MouseEvent>) => {
+      if (useStore.getState().isDraggingGizmo) return;
       if (phase === 'editing') {
-        (e as unknown as { stopPropagation: () => void }).stopPropagation();
+        e.stopPropagation();
         selectBook(entry.slug);
         return;
       }
       
       if (phase !== 'exploring') return;
-      (e as unknown as { stopPropagation: () => void }).stopPropagation();
+      e.stopPropagation();
       selectEntry(entry);
       setPhase('reading');
     },
@@ -78,9 +79,9 @@ export default function Book({ entry, position, rotation = [0, 0, 0], index }: B
   );
 
   const handlePointerOver = useCallback(
-    (e: THREE.Event) => {
+    (e: ThreeEvent<MouseEvent>) => {
       if (phase !== 'exploring' && phase !== 'editing') return;
-      (e as unknown as { stopPropagation: () => void }).stopPropagation();
+      e.stopPropagation();
       setHovered(true);
       document.body.style.cursor = 'pointer';
     },
@@ -96,12 +97,16 @@ export default function Book({ entry, position, rotation = [0, 0, 0], index }: B
   const spineText = entry.date;
 
   return (
-    <group position={position} rotation={rotation}>
+    <group 
+      ref={ref}
+      position={position} 
+      rotation={rotation}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
       <mesh
         ref={meshRef}
-        onClick={handleClick}
-        onPointerOver={handlePointerOver}
-        onPointerOut={handlePointerOut}
         castShadow
         receiveShadow
       >
@@ -139,4 +144,6 @@ export default function Book({ entry, position, rotation = [0, 0, 0], index }: B
       </mesh>
     </group>
   );
-}
+});
+
+export default Book;

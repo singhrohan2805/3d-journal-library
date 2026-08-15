@@ -79,9 +79,16 @@ export default function ReadingOverlay() {
       </button>
 
       <div ref={panelRef} className="reading-panel" style={{ opacity: 0 }}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {selectedEntry.content}
-        </ReactMarkdown>
+        {selectedEntry.content.trim().startsWith('<') || /<[a-z][\s\S]*>/i.test(selectedEntry.content) ? (
+          <div 
+            className="reading-html-content prose prose-invert max-w-none overflow-x-hidden break-words whitespace-pre-wrap [&_*]:!max-w-full [&_*]:!break-words [&_*]:!whitespace-pre-wrap [&_p]:mb-4 [&_h1]:text-2xl [&_h1]:mb-4 [&_h2]:text-xl [&_h2]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-[#c9a84c] [&_a]:underline"
+            dangerouslySetInnerHTML={{ __html: selectedEntry.content }} 
+          />
+        ) : (
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {selectedEntry.content}
+          </ReactMarkdown>
+        )}
 
         <div className="reading-actions">
           <button className="reading-back-button" onClick={handleClose}>

@@ -18,6 +18,7 @@ interface AppState {
   selectedShelfId: string | null;
   selectedBookId: string | null;
   transformMode: 'translate' | 'rotate';
+  isDraggingGizmo: boolean;
 
   // Actions
   setPhase: (phase: AppPhase) => void;
@@ -31,6 +32,7 @@ interface AppState {
   selectShelf: (id: string | null) => void;
   selectBook: (id: string | null) => void;
   setTransformMode: (mode: 'translate' | 'rotate') => void;
+  setIsDraggingGizmo: (isDragging: boolean) => void;
   updateShelfTransform: (id: string, position: [number, number, number], rotation: [number, number, number]) => void;
   updateBookTransform: (shelfId: string, slug: string, position: [number, number, number], rotation: [number, number, number]) => void;
 }
@@ -47,6 +49,7 @@ export const useStore = create<AppState>((set) => ({
   selectedShelfId: null,
   selectedBookId: null,
   transformMode: 'translate',
+  isDraggingGizmo: false,
 
   setPhase: (phase) => set({ phase }),
   selectMonth: (month) => set({ selectedMonth: month }),
@@ -67,6 +70,7 @@ export const useStore = create<AppState>((set) => ({
   selectShelf: (id) => set({ selectedShelfId: id, selectedBookId: null }),
   selectBook: (id) => set({ selectedBookId: id, selectedShelfId: null }),
   setTransformMode: (mode) => set({ transformMode: mode }),
+  setIsDraggingGizmo: (isDragging) => set({ isDraggingGizmo: isDragging }),
   updateShelfTransform: (id, position, rotation) =>
     set((state) => {
       if (!state.layout) return state;

@@ -134,54 +134,73 @@ export default function TimelineOverlay() {
       </p>
 
       <div className="timeline-track">
-        {layout?.shelves.map((shelf, i) => {
-          // Attempt to extract year/month from the first entry slug (e.g., "2024-01-foo")
-          // If not available, we use the shelf's name directly as a fallback.
-          const firstSlug = shelf.entrySlugs[0] || '';
-          let year = '';
-          let monthName = shelf.name;
+        {layout?.shelves.length === 0 ? (
+          <div
+            className="timeline-node"
+            onClick={() => sceneReady && handleMonthClick('new')}
+            style={{
+              opacity: 0,
+              cursor: sceneReady ? 'pointer' : 'wait',
+            }}
+            ref={(el) => {
+              nodesRef.current[0] = el;
+            }}
+          >
+            <div className="timeline-dot" />
+            <span className="timeline-month">Start Fresh</span>
+            <span className="timeline-year"></span>
+            <span className="timeline-entry-count">Library is empty. Click to enter.</span>
+          </div>
+        ) : (
+          layout?.shelves.map((shelf, i) => {
+            // Attempt to extract year/month from the first entry slug (e.g., "2024-01-foo")
+            // If not available, we use the shelf's name directly as a fallback.
+            const firstSlug = shelf.entrySlugs[0] || '';
+            let year = '';
+            let monthName = shelf.name;
 
-          if (firstSlug) {
-            const parts = firstSlug.split('-');
-            if (parts.length >= 2) {
-              year = parts[0];
-              const monthNum = parts[1];
-              monthName = MONTH_NAMES[monthNum] || monthNum;
+            if (firstSlug) {
+              const parts = firstSlug.split('-');
+              if (parts.length >= 2) {
+                year = parts[0];
+                const monthNum = parts[1];
+                monthName = MONTH_NAMES[monthNum] || monthNum;
+              }
             }
-          }
 
-          // If the shelf name is custom, just display the custom name instead of parsing.
-          // Let's just use shelf.name since it's customizable by the user now!
-          monthName = shelf.name;
-          year = ''; // We can omit the year if the user named the plaque specifically
+            // If the shelf name is custom, just display the custom name instead of parsing.
+            // Let's just use shelf.name since it's customizable by the user now!
+            monthName = shelf.name;
+            year = ''; // We can omit the year if the user named the plaque specifically
 
-          // Use a selected string to identify this shelf when clicked.
-          // We can use the first 7 chars of slug if it's "YYYY-MM", or fallback to shelf name.
-          const clickTarget = firstSlug ? firstSlug.slice(0, 7) : shelf.name;
+            // Use a selected string to identify this shelf when clicked.
+            // We can use the first 7 chars of slug if it's "YYYY-MM", or fallback to shelf name.
+            const clickTarget = firstSlug ? firstSlug.slice(0, 7) : shelf.name;
 
-          return (
-            <div
-              key={shelf.id}
-              ref={(el) => {
-                nodesRef.current[i] = el;
-              }}
-              className="timeline-node"
-              onClick={() => sceneReady && handleMonthClick(clickTarget)}
-              style={{
-                opacity: 0,
-                cursor: sceneReady ? 'pointer' : 'wait',
-              }}
-            >
-              <div className="timeline-dot" />
-              <span className="timeline-month">{monthName}</span>
-              <span className="timeline-year">{year}</span>
-              <span className="timeline-entry-count">
-                {shelf.entrySlugs.length}{' '}
-                {shelf.entrySlugs.length === 1 ? 'entry' : 'entries'}
-              </span>
-            </div>
-          );
-        })}
+            return (
+              <div
+                key={shelf.id}
+                ref={(el) => {
+                  nodesRef.current[i] = el;
+                }}
+                className="timeline-node"
+                onClick={() => sceneReady && handleMonthClick(clickTarget)}
+                style={{
+                  opacity: 0,
+                  cursor: sceneReady ? 'pointer' : 'wait',
+                }}
+              >
+                <div className="timeline-dot" />
+                <span className="timeline-month">{monthName}</span>
+                <span className="timeline-year">{year}</span>
+                <span className="timeline-entry-count">
+                  {shelf.entrySlugs.length}{' '}
+                  {shelf.entrySlugs.length === 1 ? 'entry' : 'entries'}
+                </span>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {!sceneReady && (

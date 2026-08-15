@@ -7,11 +7,7 @@ import gsap from 'gsap';
 import { useStore } from '../../store/useStore';
 import type { MonthGroup } from '../../lib/journal';
 
-interface CameraControllerProps {
-  months: MonthGroup[];
-}
-
-export default function CameraController({ months }: CameraControllerProps) {
+export default function CameraController() {
   const phase = useStore((s) => s.phase);
   const selectedMonth = useStore((s) => s.selectedMonth);
   const setPhase = useStore((s) => s.setPhase);
@@ -99,7 +95,7 @@ export default function CameraController({ months }: CameraControllerProps) {
       tweenRef.current.forEach((t) => t.kill());
       tweenRef.current = [];
     };
-  }, [phase, selectedMonth, camera, months, setPhase]);
+  }, [phase, selectedMonth, camera, setPhase]);
 
   return null;
 }
