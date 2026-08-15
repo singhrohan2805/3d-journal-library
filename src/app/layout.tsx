@@ -17,7 +17,7 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "Journal — An Immersive Reading Experience",
+  title: "Dust & Bindings — An Immersive Reading Experience",
   description:
     "Step into a 3D antique library and explore your journal entries as real books on wooden shelves.",
 };

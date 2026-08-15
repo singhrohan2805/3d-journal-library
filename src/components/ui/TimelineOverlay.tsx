@@ -123,7 +123,7 @@ export default function TimelineOverlay() {
   return (
     <div ref={overlayRef} className="timeline-overlay">
       <h1 ref={titleRef} className="timeline-title" style={{ opacity: 0 }}>
-        Journal
+        Dust & Bindings
       </h1>
       <p
         ref={subtitleRef}
