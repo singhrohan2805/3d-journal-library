@@ -3,11 +3,52 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { Octokit } from '@octokit/rest';
 import { JournalEntry, LibraryLayout, ShelfLayout, getAllEntries } from '../lib/journal';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content');
 const JOURNAL_DIR = path.join(CONTENT_DIR, 'journal');
 const LAYOUT_FILE = path.join(CONTENT_DIR, 'layout.json');
+
+const octokit = process.env.GITHUB_TOKEN ? new Octokit({ auth: process.env.GITHUB_TOKEN }) : null;
+const GITHUB_OWNER = process.env.GITHUB_OWNER || 'singhrohan2805';
+const GITHUB_REPO = process.env.GITHUB_REPO || '3d-journal-library';
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
+
+// Helper to push multiple file changes to GitHub directly
+async function commitToGithub(message: string, files: { path: string; content: string | null }[]) {
+  if (!octokit) return false;
+  try {
+    // 1. Get current commit
+    const { data: ref } = await octokit.git.getRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: `heads/${GITHUB_BRANCH}` });
+    const { data: commit } = await octokit.git.getCommit({ owner: GITHUB_OWNER, repo: GITHUB_REPO, commit_sha: ref.object.sha });
+    
+    // 2. Create blobs & tree
+    const tree: any[] = [];
+    for (const file of files) {
+      if (file.content === null) {
+        // null means delete file
+        tree.push({ path: file.path, mode: '100644', type: 'blob', sha: null });
+      } else {
+        const { data: blob } = await octokit.git.createBlob({ owner: GITHUB_OWNER, repo: GITHUB_REPO, content: file.content, encoding: 'utf-8' });
+        tree.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
+      }
+    }
+    
+    // 3. Create Tree
+    const { data: newTree } = await octokit.git.createTree({ owner: GITHUB_OWNER, repo: GITHUB_REPO, base_tree: commit.tree.sha, tree });
+    
+    // 4. Create Commit
+    const { data: newCommit } = await octokit.git.createCommit({ owner: GITHUB_OWNER, repo: GITHUB_REPO, message, tree: newTree.sha, parents: [commit.sha] });
+    
+    // 5. Update Ref
+    await octokit.git.updateRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: `heads/${GITHUB_BRANCH}`, sha: newCommit.sha });
+    return true;
+  } catch (err) {
+    console.error('GitHub API error:', err);
+    return false;
+  }
+}
 
 // Helper to calculate default shelf positions based on index
 function calculateDefaultShelfPosition(index: number): { position: [number, number, number], rotation: [number, number, number] } {
@@ -73,14 +114,28 @@ export async function getLibraryData() {
     if (!fs.existsSync(CONTENT_DIR)) {
       fs.mkdirSync(CONTENT_DIR, { recursive: true });
     }
-    fs.writeFileSync(LAYOUT_FILE, JSON.stringify(layout, null, 2));
+    const layoutContent = JSON.stringify(layout, null, 2);
+    fs.writeFileSync(LAYOUT_FILE, layoutContent);
+
+    // If migrating dynamically, might want to commit it as well
+    if (octokit) {
+      await commitToGithub('Initialize layout.json', [{ path: 'content/layout.json', content: layoutContent }]);
+    }
   }
 
   return { layout, entries };
 }
 
 export async function saveLayout(layout: LibraryLayout) {
-  fs.writeFileSync(LAYOUT_FILE, JSON.stringify(layout, null, 2));
+  const content = JSON.stringify(layout, null, 2);
+  fs.writeFileSync(LAYOUT_FILE, content);
+
+  if (octokit) {
+    await commitToGithub('Update library layout', [
+      { path: 'content/layout.json', content }
+    ]);
+  }
+
   return { success: true };
 }
 
@@ -116,8 +171,18 @@ export async function saveEntry(slug: string, title: string, date: string, conte
     return shelf;
   });
 
+  const filesToCommit = [
+    { path: `content/journal/${slug}.md`, content: fileContent }
+  ];
+
   if (found) {
-    await saveLayout(updatedLayout);
+    const layoutContent = JSON.stringify(updatedLayout, null, 2);
+    fs.writeFileSync(LAYOUT_FILE, layoutContent);
+    filesToCommit.push({ path: 'content/layout.json', content: layoutContent });
+  }
+
+  if (octokit) {
+    await commitToGithub(`Update journal entry: ${slug}`, filesToCommit);
   }
 
   return { success: true, newLayout: updatedLayout };
@@ -136,6 +201,15 @@ export async function deleteEntryAction(slug: string, layout: LibraryLayout) {
     entrySlugs: shelf.entrySlugs.filter(s => s !== slug)
   }));
 
-  await saveLayout(updatedLayout);
+  const layoutContent = JSON.stringify(updatedLayout, null, 2);
+  fs.writeFileSync(LAYOUT_FILE, layoutContent);
+
+  if (octokit) {
+    await commitToGithub(`Delete journal entry: ${slug}`, [
+      { path: `content/journal/${slug}.md`, content: null },
+      { path: 'content/layout.json', content: layoutContent }
+    ]);
+  }
+
   return { success: true, newLayout: updatedLayout };
 }
