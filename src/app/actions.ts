@@ -89,6 +89,25 @@ export async function getLibraryData() {
   const entries = getAllEntries();
   let layout: LibraryLayout;
 
+  if (octokit) {
+    try {
+      const response = await octokit.repos.getContent({
+        owner: GITHUB_OWNER,
+        repo: GITHUB_REPO,
+        path: 'content/layout.json',
+        ref: GITHUB_BRANCH,
+      });
+      
+      if (!Array.isArray(response.data) && response.data.type === 'file') {
+        const content = Buffer.from(response.data.content, 'base64').toString('utf-8');
+        layout = JSON.parse(content);
+        return { layout, entries };
+      }
+    } catch (e) {
+      console.warn("Failed to fetch layout.json from GitHub, falling back to local disk", e);
+    }
+  }
+
   if (fs.existsSync(LAYOUT_FILE)) {
     layout = JSON.parse(fs.readFileSync(LAYOUT_FILE, 'utf-8'));
   } else {
