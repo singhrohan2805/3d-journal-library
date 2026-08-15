@@ -92,8 +92,9 @@ function EditableShelf({ shelf, layout, entries, phase, selectedShelfId, selecte
           <boxGeometry args={[1.8, 0.35, 0.05]} />
           <meshStandardMaterial color={isSelected ? "#5a3a2a" : "#3e2723"} roughness={0.8} />
           <Text
-            position={[0, 0, 0.026]}
+            position={[0, 0, 0.035]}
             fontSize={0.16}
+            maxWidth={1.6}
             color="#c9a84c"
             anchorX="center"
             anchorY="middle"

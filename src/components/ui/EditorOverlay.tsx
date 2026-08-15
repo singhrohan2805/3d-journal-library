@@ -59,7 +59,6 @@ export default function EditorOverlay() {
       shelves: layout.shelves.map((s) => (s.id === selectedShelf.id ? { ...s, name } : s)),
     };
     setLibraryData(newLayout, entries);
-    await saveLayout(newLayout);
   };
 
   const handleAddEntry = async () => {
@@ -132,7 +131,7 @@ export default function EditorOverlay() {
             disabled={saving}
             className="text-sm border border-green-500/50 text-green-400 px-2 py-1 rounded hover:bg-green-500 hover:text-white transition-colors"
           >
-            Save Layout
+            {saving ? 'Saving...' : 'Save Layout'}
           </button>
           <button 
             onClick={() => {

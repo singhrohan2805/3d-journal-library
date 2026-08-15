@@ -19,8 +19,8 @@ export default function CameraController() {
   useEffect(() => {
     if (phase !== 'transitioning' || !selectedMonth || !layout) return;
 
-    // Find the first shelf that contains an entry matching this month
-    const targetShelf = layout.shelves.find(shelf => 
+    // Find the shelf by its exact ID or fallback to matching entry slugs
+    const targetShelf = layout.shelves.find(shelf => shelf.id === selectedMonth) || layout.shelves.find(shelf => 
       shelf.entrySlugs.some(slug => {
         const entry = entries.find(e => e.slug === slug);
         return entry?.month === selectedMonth || slug.startsWith(selectedMonth);

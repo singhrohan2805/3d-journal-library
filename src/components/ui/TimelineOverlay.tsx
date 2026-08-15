@@ -173,10 +173,6 @@ export default function TimelineOverlay() {
             monthName = shelf.name;
             year = ''; // We can omit the year if the user named the plaque specifically
 
-            // Use a selected string to identify this shelf when clicked.
-            // We can use the first 7 chars of slug if it's "YYYY-MM", or fallback to shelf name.
-            const clickTarget = firstSlug ? firstSlug.slice(0, 7) : shelf.name;
-
             return (
               <div
                 key={shelf.id}
@@ -184,7 +180,7 @@ export default function TimelineOverlay() {
                   nodesRef.current[i] = el;
                 }}
                 className="timeline-node"
-                onClick={() => sceneReady && handleMonthClick(clickTarget)}
+                onClick={() => sceneReady && handleMonthClick(shelf.id)}
                 style={{
                   opacity: 0,
                   cursor: sceneReady ? 'pointer' : 'wait',
