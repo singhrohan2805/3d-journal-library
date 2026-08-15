@@ -36,17 +36,9 @@ export default function EditorOverlay() {
       entrySlugs: [],
     };
     const newLayout = { ...layout, shelves: [...layout.shelves, newShelf] };
-    const prevLayout = layout;
     
     setLibraryData(newLayout, entries);
     selectShelf(newShelf.id);
-    
-    const result = await saveLayout(newLayout);
-    if (!result.success) {
-      alert("Failed to add shelf. Reverting.");
-      setLibraryData(prevLayout, entries);
-      selectShelf(null);
-    }
   };
 
   const handleDeleteShelf = async () => {
@@ -59,12 +51,14 @@ export default function EditorOverlay() {
     setLibraryData(newLayout, entries);
     selectShelf(null);
     
+    setSaving(true);
     const result = await saveLayout(newLayout);
     if (!result.success) {
       alert("Failed to delete shelf. Reverting.");
       setLibraryData(prevLayout, entries);
       selectShelf(selectedShelf.id);
     }
+    setSaving(false);
   };
 
   const handleUpdateShelfName = async (name: string) => {
@@ -78,7 +72,6 @@ export default function EditorOverlay() {
 
   const handleAddEntry = async () => {
     if (!selectedShelf) return;
-    setSaving(true);
     const slug = `entry_${Date.now()}`;
     const newEntry = {
       slug,
@@ -90,14 +83,14 @@ export default function EditorOverlay() {
       monthLabel: '',
     };
     
-    const result = await saveEntry(slug, newEntry.title, newEntry.date, newEntry.content, selectedShelf.id, layout);
-    if (result.success && result.newLayout) {
-      setLibraryData(result.newLayout, [...entries, newEntry]);
-      selectBook(newEntry.slug);
-    } else {
-      alert("Failed to create book. Please try again.");
-    }
-    setSaving(false);
+    // Optimistically update layout to include the new entry slug in the selected shelf
+    const newLayout = {
+      ...layout,
+      shelves: layout.shelves.map(s => s.id === selectedShelf.id ? { ...s, entrySlugs: [...s.entrySlugs, slug] } : s)
+    };
+    
+    setLibraryData(newLayout, [...entries, newEntry]);
+    selectBook(newEntry.slug);
   };
 
   const handleUpdateEntry = async (updates: Partial<typeof selectedEntry>) => {

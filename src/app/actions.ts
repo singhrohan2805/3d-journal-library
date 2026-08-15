@@ -191,10 +191,10 @@ export async function saveEntry(slug: string, title: string, date: string, conte
     console.warn('Local FS write failed (expected on Vercel)', e);
   }
 
-  // Update layout.json if the slug is not in the shelf
+  // Always update layout.json to ensure any optimistic additions (like new books) are saved
   let updatedLayout = { ...layout };
-  let found = false;
   
+  // Just to be absolutely sure the slug is in the correct shelf if not already
   updatedLayout.shelves = updatedLayout.shelves.map(shelf => {
     // Remove from other shelves
     if (shelf.id !== shelfId) {
@@ -205,7 +205,6 @@ export async function saveEntry(slug: string, title: string, date: string, conte
     }
     // Add to target shelf
     if (!shelf.entrySlugs.includes(slug)) {
-      found = true;
       return {
         ...shelf,
         entrySlugs: [...shelf.entrySlugs, slug]
@@ -214,19 +213,17 @@ export async function saveEntry(slug: string, title: string, date: string, conte
     return shelf;
   });
 
-  const filesToCommit = [
-    { path: `content/journal/${slug}.md`, content: fileContent }
-  ];
-
-  if (found) {
-    const layoutContent = JSON.stringify(updatedLayout, null, 2);
-    try {
-      fs.writeFileSync(LAYOUT_FILE, layoutContent);
-    } catch (e) {
-      console.warn('Local FS write failed (expected on Vercel)', e);
-    }
-    filesToCommit.push({ path: 'content/layout.json', content: layoutContent });
+  const layoutContent = JSON.stringify(updatedLayout, null, 2);
+  try {
+    fs.writeFileSync(LAYOUT_FILE, layoutContent);
+  } catch (e) {
+    console.warn('Local FS write failed (expected on Vercel)', e);
   }
+
+  const filesToCommit = [
+    { path: `content/journal/${slug}.md`, content: fileContent },
+    { path: 'content/layout.json', content: layoutContent }
+  ];
 
   if (octokit) {
     const success = await commitToGithub(`Update journal entry: ${slug}`, filesToCommit);
