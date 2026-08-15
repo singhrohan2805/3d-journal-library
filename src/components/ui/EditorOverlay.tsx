@@ -36,9 +36,17 @@ export default function EditorOverlay() {
       entrySlugs: [],
     };
     const newLayout = { ...layout, shelves: [...layout.shelves, newShelf] };
+    const prevLayout = layout;
+    
     setLibraryData(newLayout, entries);
-    await saveLayout(newLayout);
     selectShelf(newShelf.id);
+    
+    const result = await saveLayout(newLayout);
+    if (!result.success) {
+      alert("Failed to add shelf. Reverting.");
+      setLibraryData(prevLayout, entries);
+      selectShelf(null);
+    }
   };
 
   const handleDeleteShelf = async () => {
@@ -47,9 +55,16 @@ export default function EditorOverlay() {
       ...layout,
       shelves: layout.shelves.filter((s) => s.id !== selectedShelf.id),
     };
+    const prevLayout = layout;
     setLibraryData(newLayout, entries);
-    await saveLayout(newLayout);
     selectShelf(null);
+    
+    const result = await saveLayout(newLayout);
+    if (!result.success) {
+      alert("Failed to delete shelf. Reverting.");
+      setLibraryData(prevLayout, entries);
+      selectShelf(selectedShelf.id);
+    }
   };
 
   const handleUpdateShelfName = async (name: string) => {
@@ -75,10 +90,12 @@ export default function EditorOverlay() {
       monthLabel: '',
     };
     
-    const { newLayout } = await saveEntry(slug, newEntry.title, newEntry.date, newEntry.content, selectedShelf.id, layout);
-    if (newLayout) {
-      setLibraryData(newLayout, [...entries, newEntry]);
+    const result = await saveEntry(slug, newEntry.title, newEntry.date, newEntry.content, selectedShelf.id, layout);
+    if (result.success && result.newLayout) {
+      setLibraryData(result.newLayout, [...entries, newEntry]);
       selectBook(newEntry.slug);
+    } else {
+      alert("Failed to create book. Please try again.");
     }
     setSaving(false);
   };
@@ -100,7 +117,10 @@ export default function EditorOverlay() {
     // Find the shelf this entry belongs to
     const parentShelf = layout.shelves.find(s => s.entrySlugs.includes(currentEntry.slug));
     if (parentShelf) {
-      await saveEntry(currentEntry.slug, currentEntry.title, currentEntry.date, currentEntry.content, parentShelf.id, layout);
+      const result = await saveEntry(currentEntry.slug, currentEntry.title, currentEntry.date, currentEntry.content, parentShelf.id, layout);
+      if (!result.success) {
+        alert("Failed to save changes. Please try again.");
+      }
     }
     setSaving(false);
   };
@@ -109,11 +129,13 @@ export default function EditorOverlay() {
     const currentEntry = entries.find(e => e.slug === selectedBookId) || selectedEntry;
     if (!currentEntry) return;
     setSaving(true);
-    const { newLayout } = await deleteEntryAction(currentEntry.slug, layout);
-    if (newLayout) {
-      setLibraryData(newLayout, entries.filter(e => e.slug !== currentEntry.slug));
+    const result = await deleteEntryAction(currentEntry.slug, layout);
+    if (result.success && result.newLayout) {
+      setLibraryData(result.newLayout, entries.filter(e => e.slug !== currentEntry.slug));
+      selectBook(null);
+    } else {
+      alert("Failed to delete book. Please try again.");
     }
-    selectBook(null);
     setSaving(false);
   };
 
@@ -125,7 +147,8 @@ export default function EditorOverlay() {
           <button 
             onClick={async () => {
               setSaving(true);
-              await saveLayout(layout);
+              const result = await saveLayout(layout);
+              if (!result.success) alert("Failed to save layout. Please try again.");
               setSaving(false);
             }}
             disabled={saving}

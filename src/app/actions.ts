@@ -16,38 +16,46 @@ const GITHUB_REPO = process.env.GITHUB_REPO || '3d-journal-library';
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
 // Helper to push multiple file changes to GitHub directly
-async function commitToGithub(message: string, files: { path: string; content: string | null }[]) {
+async function commitToGithub(message: string, files: { path: string; content: string | null }[], retries = 3) {
   if (!octokit) return false;
-  try {
-    // 1. Get current commit
-    const { data: ref } = await octokit.git.getRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: `heads/${GITHUB_BRANCH}` });
-    const { data: commit } = await octokit.git.getCommit({ owner: GITHUB_OWNER, repo: GITHUB_REPO, commit_sha: ref.object.sha });
-    
-    // 2. Create blobs & tree
-    const tree: any[] = [];
-    for (const file of files) {
-      if (file.content === null) {
-        // null means delete file
-        tree.push({ path: file.path, mode: '100644', type: 'blob', sha: null });
-      } else {
-        const { data: blob } = await octokit.git.createBlob({ owner: GITHUB_OWNER, repo: GITHUB_REPO, content: file.content, encoding: 'utf-8' });
-        tree.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      // 1. Get current commit
+      const { data: ref } = await octokit.git.getRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: `heads/${GITHUB_BRANCH}` });
+      const { data: commit } = await octokit.git.getCommit({ owner: GITHUB_OWNER, repo: GITHUB_REPO, commit_sha: ref.object.sha });
+      
+      // 2. Create blobs & tree
+      const tree: any[] = [];
+      for (const file of files) {
+        if (file.content === null) {
+          // null means delete file
+          tree.push({ path: file.path, mode: '100644', type: 'blob', sha: null });
+        } else {
+          const { data: blob } = await octokit.git.createBlob({ owner: GITHUB_OWNER, repo: GITHUB_REPO, content: file.content, encoding: 'utf-8' });
+          tree.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
+        }
       }
+      
+      // 3. Create Tree
+      const { data: newTree } = await octokit.git.createTree({ owner: GITHUB_OWNER, repo: GITHUB_REPO, base_tree: commit.tree.sha, tree });
+      
+      // 4. Create Commit
+      const { data: newCommit } = await octokit.git.createCommit({ owner: GITHUB_OWNER, repo: GITHUB_REPO, message, tree: newTree.sha, parents: [commit.sha] });
+      
+      // 5. Update Ref
+      await octokit.git.updateRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: `heads/${GITHUB_BRANCH}`, sha: newCommit.sha });
+      return true; // Success!
+    } catch (err: any) {
+      console.error(`GitHub API error on attempt ${attempt}:`, err?.message || err);
+      if (attempt === retries) {
+        return false;
+      }
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
-    
-    // 3. Create Tree
-    const { data: newTree } = await octokit.git.createTree({ owner: GITHUB_OWNER, repo: GITHUB_REPO, base_tree: commit.tree.sha, tree });
-    
-    // 4. Create Commit
-    const { data: newCommit } = await octokit.git.createCommit({ owner: GITHUB_OWNER, repo: GITHUB_REPO, message, tree: newTree.sha, parents: [commit.sha] });
-    
-    // 5. Update Ref
-    await octokit.git.updateRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: `heads/${GITHUB_BRANCH}`, sha: newCommit.sha });
-    return true;
-  } catch (err) {
-    console.error('GitHub API error:', err);
-    return false;
   }
+  return false;
 }
 
 // Helper to calculate default shelf positions based on index
@@ -140,9 +148,10 @@ export async function saveLayout(layout: LibraryLayout) {
   }
 
   if (octokit) {
-    await commitToGithub('Update library layout', [
+    const success = await commitToGithub('Update library layout', [
       { path: 'content/layout.json', content }
     ]);
+    if (!success) return { success: false, error: 'Failed to save to GitHub' };
   }
 
   return { success: true };
@@ -199,7 +208,8 @@ export async function saveEntry(slug: string, title: string, date: string, conte
   }
 
   if (octokit) {
-    await commitToGithub(`Update journal entry: ${slug}`, filesToCommit);
+    const success = await commitToGithub(`Update journal entry: ${slug}`, filesToCommit);
+    if (!success) return { success: false, error: 'Failed to save to GitHub' };
   }
 
   return { success: true, newLayout: updatedLayout };
@@ -230,10 +240,11 @@ export async function deleteEntryAction(slug: string, layout: LibraryLayout) {
   }
 
   if (octokit) {
-    await commitToGithub(`Delete journal entry: ${slug}`, [
+    const success = await commitToGithub(`Delete journal entry: ${slug}`, [
       { path: `content/journal/${slug}.md`, content: null },
       { path: 'content/layout.json', content: layoutContent }
     ]);
+    if (!success) return { success: false, error: 'Failed to save to GitHub' };
   }
 
   return { success: true, newLayout: updatedLayout };
