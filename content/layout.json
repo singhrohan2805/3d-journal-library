@@ -16,6 +16,21 @@
       "entrySlugs": [
         "entry_1786818934652"
       ]
+    },
+    {
+      "id": "shelf_1786819831534",
+      "name": "New Shelf",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "entrySlugs": []
     }
   ]
 }
